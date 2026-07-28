@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>每日情報</title>
+<style>
+  :root { --bg:#0f1115; --card:#1a1d24; --fg:#e6e8eb; --muted:#9aa3af; --accent:#4f9dff;
+          --line:#242833; --codebg:#0b0d11; --codefg:#7ee0a6; }
+  body.light { --bg:#f3eee6; --card:#ffffff; --fg:#1f2430; --muted:#6b7280; --accent:#2563eb;
+               --line:#e7e1d6; --codebg:#efeae1; --codefg:#1a7f4f; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+         font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+         line-height:1.6; padding:16px; }
+  .wrap { max-width:760px; margin:0 auto; }
+  h1 { font-size:1.4rem; margin:.2rem 0; }
+  .date { color:var(--muted); font-size:.9rem; }
+  .theme-btn { position:fixed; top:12px; right:12px; z-index:10;
+               background:var(--card); color:var(--fg); border:1px solid var(--line);
+               border-radius:8px; padding:6px 10px; font-size:.85rem; cursor:pointer; }
+  .history { display:flex; align-items:center; gap:8px; margin:14px 0; font-size:.85rem; }
+  .history label { color:var(--muted); }
+  select { background:var(--card); color:var(--fg); border:1px solid var(--line);
+           border-radius:6px; padding:4px 8px; font-size:.85rem; }
+  .card { background:var(--card); border-radius:12px; padding:14px 18px; margin:14px 0; }
+  .card h2 { font-size:1.1rem; margin:.2rem 0 .6rem; }
+  .card ul { list-style:none; padding:0; margin:0; }
+  .card li { padding:8px 0; border-top:1px solid var(--line); }
+  .card li:first-child { border-top:none; }
+  .card li p { margin:.2rem 0 0; color:var(--muted); font-size:.95rem; }
+  code { background:var(--codebg); padding:1px 6px; border-radius:5px; color:var(--codefg); }
+  .spec { border:1px dashed var(--line); }
+  .empty { color:var(--muted); text-align:center; padding:40px 0; }
+</style>
+</head>
+<body>
+<button class="theme-btn" id="themeBtn">🌙 深色</button>
+<div class="wrap">
+  <h1>📰 每日情報</h1>
+  <div class="date" id="curDate"></div>
+  <nav class="history"><label>歷史：</label><select id="picker"></select></nav>
+  <div id="body"><p class="empty">載入中…</p></div>
+</div>
+<script>
+const TOPICS = [['tech','🔬 科技'],['ai','🤖 AI'],['stocks','📈 美股'],['crypto','₿ 加密貨幣']];
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const list = (title, items, cls = '') => items.length
+  ? `<section class="card ${cls}"><h2>${title}</h2><ul>${items.join('')}</ul></section>` : '';
+
+function render(r) {
+  let html = TOPICS.map(([k, title]) => list(title,
+    (r.pastWeek?.[k] || []).map(it =>
+      `<li><strong>${esc(it.title)}</strong><p>${esc(it.summary)}</p></li>`))).join('');
+
+  html += list('📅 未來排程', (r.upcoming?.scheduled || []).map(it =>
+    `<li><code>${esc(it.date)}</code> <strong>${esc(it.title)}</strong>${it.note ? `<p>${esc(it.note)}</p>` : ''}</li>`));
+
+  html += list('🔮 AI 推測（僅供參考）', (r.upcoming?.speculation || []).map(it =>
+    `<li><strong>${esc(it.title)}</strong><p>${esc(it.rationale)}</p></li>`), 'spec');
+
+  document.getElementById('body').innerHTML = html || '<p class="empty">呢日冇內容。</p>';
+  document.getElementById('curDate').textContent = r.date || '';
+}
+
+async function load(date) {
+  try {
+    render(await (await fetch(`data/${date}.json`)).json());
+  } catch {
+    document.getElementById('body').innerHTML = '<p class="empty">載入唔到呢日嘅報告。</p>';
+  }
+}
+
+(async () => {
+  const picker = document.getElementById('picker');
+  try {
+    const dates = await (await fetch('data/index.json')).json();
+    if (!dates.length) throw 0;
+    picker.innerHTML = dates.map(d => `<option>${d}</option>`).join('');
+    picker.onchange = () => load(picker.value);
+    load(dates[0]);
+  } catch {
+    document.getElementById('body').innerHTML = '<p class="empty">仲未有報告，等第一次自動執行。</p>';
+  }
+})();
+
+const btn = document.getElementById('themeBtn');
+const apply = t => {
+  document.body.classList.toggle('light', t === 'light');
+  btn.textContent = t === 'light' ? '☀️ 淺色' : '🌙 深色';
+};
+btn.onclick = () => {
+  const t = document.body.classList.contains('light') ? 'dark' : 'light';
+  localStorage.setItem('theme', t);
+  apply(t);
+};
+apply(localStorage.getItem('theme') || 'dark');
+</script>
+</body>
+</html>
