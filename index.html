@@ -91,10 +91,12 @@ const apply = t => {
 };
 btn.onclick = () => {
   const t = document.body.classList.contains('light') ? 'dark' : 'light';
-  localStorage.setItem('theme', t);
+  localStorage.setItem('hub-theme', t);
   apply(t);
 };
-apply(localStorage.getItem('theme') || 'dark');
+// 全站共用 hub-theme（同 origin，localStorage 通用），冇記錄就跟系統
+apply(localStorage.getItem('hub-theme') ||
+  (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
 </script>
 </body>
 </html>
